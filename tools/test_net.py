@@ -84,7 +84,7 @@ if __name__ == '__main__':
   imdb.competition_mode(args.comp_mode)
 
   tfconfig = tf.ConfigProto(allow_soft_placement=True)
-  tfconfig.gpu_options.allow_growth=True
+  tfconfig.cpu_options.allow_growth=True
 
   # init session
   sess = tf.Session(config=tfconfig)
