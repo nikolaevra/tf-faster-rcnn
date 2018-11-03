@@ -6,8 +6,6 @@
 # Written by Xinlei Chen, based on code from Ross Girshick
 # --------------------------------------------------------
 
-# TODO(nikolaevra): review documentation
-
 """
 Image processing script. Takes in names of tiles to process and outputs predictions for objects
 
@@ -87,8 +85,11 @@ def demo(sess, net, image_name):
     # Detect all object classes and regress object bounds
     timer = Timer()
     timer.tic()
+
+    # Get image detections
     scores, boxes = im_detect(sess, net, im)
     timer.toc()
+
     print(
         'Detection took {:.3f}s for {:d} object proposals'.format(timer.total_time, boxes.shape[0]))
 
@@ -149,15 +150,24 @@ if __name__ == '__main__':
     else:
         raise NotImplementedError
 
-    net.create_architecture("TEST", num_classes=len(CLASSES), tag='default', anchor_scales=[8, 16, 32], anchor_ratios=(0.5, 1, 2))
+    net.create_architecture(
+        "TEST",
+        num_classes=len(CLASSES),
+        tag='default',
+        anchor_scales=[8, 16, 32],
+        anchor_ratios=(0.5, 1, 2)
+    )
 
+    # Saver is an easy interface to save/load models and its weights based on a checkpoint number.
     saver = tf.train.Saver()
+    # Load model and weights for the pre-trained extraction model.
     saver.restore(sess, tfmodel)
 
     print('Loaded network {:s}'.format(tfmodel))
 
-    im_names = ['img00001.jpg', 'img00002.jpg', 'img00003.jpg',
-                'img00006.jpg', 'img00005.jpg']
+    im_names = ['img00001.jpg', 'img00002.jpg', 'img00003.jpg', 'img00006.jpg', 'img00005.jpg']
+
+    # Go through a list of images and create detections for them
     for im_name in im_names:
         print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
         print('Demo for data/demo/{}'.format(im_name))

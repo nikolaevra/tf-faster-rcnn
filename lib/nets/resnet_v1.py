@@ -91,9 +91,16 @@ class resnetv1(Network):
 
     def _image_to_head(self, is_training, reuse=None):
         assert (0 <= cfg.RESNET.FIXED_BLOCKS <= 3)
+
         # Now the base is always fixed during training
         with slim.arg_scope(resnet_arg_scope(is_training=False)):
+            # Build the first layer manually under self._scope
+            # conv2d[same] -> max_pool2d ->
             net_conv = self._build_base()
+
+        # Based on the number of blocks that are fixed in first layers create resnet_v1 model.
+        # Number of fixed blocks during training, by default the first of all 4 blocks is fixed
+        # Range: 0 (none) to 3 (all)
         if cfg.RESNET.FIXED_BLOCKS > 0:
             with slim.arg_scope(resnet_arg_scope(is_training=False)):
                 net_conv, _ = resnet_v1.resnet_v1(net_conv,
@@ -111,6 +118,7 @@ class resnetv1(Network):
                                                   reuse=reuse,
                                                   scope=self._scope)
 
+        # act_summaries accumulates all stages of the network together into a list.
         self._act_summaries.append(net_conv)
         self._layers['head'] = net_conv
 

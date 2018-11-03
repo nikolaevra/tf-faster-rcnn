@@ -226,6 +226,7 @@ class Network(object):
             # Note: models in E2E tensorflow mode have only been tested in feed-forward mode,
             #       but these models are exportable to other tensorflow instances as GraphDef files.
             if cfg.USE_E2E_TF:
+                # Generates TF anchors
                 anchors, anchor_length = generate_anchors_pre_tf(
                     height,
                     width,
@@ -234,6 +235,7 @@ class Network(object):
                     self._anchor_ratios
                 )
             else:
+                # Generates numpy anchors
                 anchors, anchor_length = tf.py_func(generate_anchors_pre,
                                                     [height, width,
                                                      self._feat_stride, self._anchor_scales,
@@ -245,7 +247,7 @@ class Network(object):
             self._anchor_length = anchor_length
 
     def _build_network(self, is_training=True):
-        # select initializers.
+        # select initializer.
         #     cfg.TRAIN.TRUNCATED - sets whether to initialize with truncated normal distribution.
         if cfg.TRAIN.TRUNCATED:
             initializer = tf.truncated_normal_initializer(mean=0.0, stddev=0.01)
@@ -254,23 +256,29 @@ class Network(object):
             initializer = tf.random_normal_initializer(mean=0.0, stddev=0.01)
             initializer_bbox = tf.random_normal_initializer(mean=0.0, stddev=0.001)
 
+        # Implemented in the derived classes
+        # Create head of the network. Pretty much the entire resnet part of the network.
+        # net_conv is the pointer to the output of the head of the network.
         net_conv = self._image_to_head(is_training)
+
         with tf.variable_scope(self._scope, self._scope):
-            # build the anchors for the image
+            # Build the anchors for the image
             self._anchor_component()
 
-            # region proposal network
+            # Build region proposal network
             rois = self._region_proposal(net_conv, is_training, initializer)
 
-            # region of interest pooling
+            # Build region of interest pooling
             if cfg.POOLING_MODE == 'crop':
                 pool5 = self._crop_pool_layer(net_conv, rois, "pool5")
             else:
                 raise NotImplementedError
 
+        # Extract the FC proposed regions
         fc7 = self._head_to_tail(pool5, is_training)
+
         with tf.variable_scope(self._scope, self._scope):
-            # region classification
+            # Build the final FC layers for region classification and bouding box regression
             cls_prob, bbox_pred = self._region_classification(fc7, is_training,
                                                               initializer, initializer_bbox)
 
@@ -345,12 +353,14 @@ class Network(object):
 
     def _region_proposal(self, net_conv, is_training, initializer):
         rpn = slim.conv2d(net_conv, cfg.RPN_CHANNELS, [3, 3], trainable=is_training,
-                          weights_initializer=initializer,
-                          scope="rpn_conv/3x3")
+                          weights_initializer=initializer, scope="rpn_conv/3x3")
+        # Record rpn in the list of all stages
         self._act_summaries.append(rpn)
+
         rpn_cls_score = slim.conv2d(rpn, self._num_anchors * 2, [1, 1], trainable=is_training,
                                     weights_initializer=initializer,
                                     padding='VALID', activation_fn=None, scope='rpn_cls_score')
+
         # change it so that the score has 2 as its channel size
         rpn_cls_score_reshape = self._reshape_layer(rpn_cls_score, 2, 'rpn_cls_score_reshape')
         rpn_cls_prob_reshape = self._softmax_layer(rpn_cls_score_reshape, "rpn_cls_prob_reshape")
@@ -411,6 +421,15 @@ class Network(object):
 
     def create_architecture(self, mode, num_classes, tag=None, anchor_scales=(8, 16, 32),
                             anchor_ratios=(0.5, 1, 2)):
+        """Creates the entire network.
+
+        :param mode          : "TRAIN" or "TEST" based if you want to train the net or just test it.
+        :param num_classes   : number of classes to classify.
+        :param tag           : network tag used as suffix to identify layers between runs.
+        :param anchor_scales : tuple of anchor scales.
+        :param anchor_ratios : tuple of anchor ratios.
+        :return: dict() containing regions of interest and losses.
+        """
         self._image = tf.placeholder(tf.float32, shape=[1, None, None, 3])
         self._im_info = tf.placeholder(tf.float32, shape=[3])
         self._gt_boxes = tf.placeholder(tf.float32, shape=[None, 5])
@@ -454,11 +473,13 @@ class Network(object):
             self._train_summaries.append(var)
 
         if testing:
+            # if testing then dont add losses
             stds = np.tile(np.array(cfg.TRAIN.BBOX_NORMALIZE_STDS), self._num_classes)
             means = np.tile(np.array(cfg.TRAIN.BBOX_NORMALIZE_MEANS), self._num_classes)
             self._predictions["bbox_pred"] *= stds
             self._predictions["bbox_pred"] += means
         else:
+            # If not testing then add losses.
             self._add_losses()
             layers_to_output.update(self._losses)
 
