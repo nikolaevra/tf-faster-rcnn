@@ -8,14 +8,22 @@ import argparse
 import cv2
 import os
 
+# Import this to initialize all of the paths for imported local modules.
+import _init_paths
+
 import matplotlib.pyplot as plt
 import numpy as np
 from model.config import cfg
-from faster_rcnn_wrapper import DetectorWrapper
+from wrapper.faster_rcnn_wrapper import DetectorWrapper
 
-# from model.nms_wrapper import nms
+from model.nms_wrapper import nms
 
-CLASSES = ('__background__', 'bicycle', 'bus', 'car', 'horse', 'motorbike', 'person', 'train')
+CLASSES = ('__background__',
+           'aeroplane', 'bicycle', 'bird', 'boat',
+           'bottle', 'bus', 'car', 'cat', 'chair',
+           'cow', 'diningtable', 'dog', 'horse',
+           'motorbike', 'person', 'pottedplant',
+           'sheep', 'sofa', 'train', 'tvmonitor')
 
 NETS = {
     'vgg16': ('vgg16_faster_rcnn_iter_70000.ckpt',),
@@ -42,9 +50,7 @@ def vis_detections(im, class_name, dets, thresh=0.5):
         score = dets[i, -1]
 
         ax.add_patch(
-            plt.Rectangle((bbox[0], bbox[1]),
-                          bbox[2] - bbox[0],
-                          bbox[3] - bbox[1], fill=False,
+            plt.Rectangle((bbox[0], bbox[1]), bbox[2] - bbox[0], bbox[3] - bbox[1], fill=False,
                           edgecolor='red', linewidth=3.5)
         )
         ax.text(bbox[0], bbox[1] - 2,
@@ -57,9 +63,10 @@ def vis_detections(im, class_name, dets, thresh=0.5):
     plt.axis('off')
     plt.tight_layout()
     plt.draw()
+    plt.show()
 
 
-def vis(image, boxes, scores):
+def vis(image, scores, boxes):
     # TODO: load images in one place inatead of twice.
     im_file = os.path.join(cfg.DATA_DIR, 'demo', image)
     im = cv2.imread(im_file)
@@ -73,8 +80,8 @@ def vis(image, boxes, scores):
         cls_scores = scores[:, cls_ind]
         dets = np.hstack((cls_boxes,
                           cls_scores[:, np.newaxis])).astype(np.float32)
-        # keep = nms(dets, NMS_THRESH)
-        # dets = dets[keep, :]
+        keep = nms(dets, NMS_THRESH)
+        dets = dets[keep, :]
         vis_detections(im, cls, dets, thresh=CONF_THRESH)
 
 
@@ -98,11 +105,17 @@ if __name__ == '__main__':
     extraction_net = args.extraction_net
     dataset = args.dataset
 
-    images = ['img00001.jpg', 'img00002.jpg', 'img00003.jpg', 'img00006.jpg',
-              'img00005.jpg']
+    images = [
+        'img00001.jpg',
+        # 'img00002.jpg',
+        # 'img00003.jpg',
+        # 'img00006.jpg',
+        # 'img00005.jpg'
+    ]
 
     # Use all the default parameters for now
     detector = DetectorWrapper()
     detections = detector.detect(images)
     for image in images:
+        print(image)
         vis(image, detections[image]['scores'], detections[image]['boxes'])

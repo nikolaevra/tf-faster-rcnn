@@ -12,7 +12,12 @@ from nets.resnet_v1 import resnetv1
 from nets.vgg16 import vgg16
 from utils.timer import Timer
 
-CLASSES = ('__background__', 'bicycle', 'bus', 'car', 'horse', 'motorbike', 'person', 'train')
+CLASSES = ('__background__',
+           'aeroplane', 'bicycle', 'bird', 'boat',
+           'bottle', 'bus', 'car', 'cat', 'chair',
+           'cow', 'diningtable', 'dog', 'horse',
+           'motorbike', 'person', 'pottedplant',
+           'sheep', 'sofa', 'train', 'tvmonitor')
 
 NETS = {
     'vgg16': ('vgg16_faster_rcnn_iter_70000.ckpt',),
@@ -105,7 +110,6 @@ class DetectorWrapper:
             detections[image] = {
                 "scores": scores,
                 "boxes": boxes,
-                "image_name": image,
                 "detection_time": total_t
             }
 

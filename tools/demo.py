@@ -93,6 +93,9 @@ def demo(sess, net, image_name):
     print(
         'Detection took {:.3f}s for {:d} object proposals'.format(timer.total_time, boxes.shape[0]))
 
+    import pdb
+    pdb.set_trace()
+
     # Visualize detections for each class
     CONF_THRESH = 0.8
     NMS_THRESH = 0.3
@@ -152,7 +155,7 @@ if __name__ == '__main__':
 
     net.create_architecture(
         "TEST",
-        num_classes=len(CLASSES),
+        num_classes=21,
         tag='default',
         anchor_scales=[8, 16, 32],
         anchor_ratios=(0.5, 1, 2)
@@ -165,7 +168,7 @@ if __name__ == '__main__':
 
     print('Loaded network {:s}'.format(tfmodel))
 
-    im_names = ['img00001.jpg', 'img00002.jpg', 'img00003.jpg', 'img00006.jpg', 'img00005.jpg']
+    im_names = ['img00001.jpg']
 
     # Go through a list of images and create detections for them
     for im_name in im_names:
